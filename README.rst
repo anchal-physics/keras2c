@@ -6,6 +6,15 @@ keras2c
 
 |License| |DOI|
 
+**********
+Note: This is a fork of the original [keras2c](https://github.com/PlasmaControl/keras2c) library. The licence
+remains the same as the original library. This fork adds additional features and installment instructions.
+
+Install conda environment:
+```bash
+conda env create -f conda_keras2c.yml
+```
+**********
 
 keras2c is a library for deploying keras neural networks in C99, using only standard libraries.
 It is designed to be as simple as possible for real time applications.
