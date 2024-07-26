@@ -12,6 +12,7 @@ import subprocess
 import time
 import os
 import tensorflow as tf
+import shutil
 tf.compat.v1.disable_eager_execution()
 
 __author__ = "Rory Conlin"
@@ -23,23 +24,33 @@ __email__ = "wconlin@princeton.edu"
 
 CC = 'gcc'
 
+include_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../include/')
 
 def build_and_run(name, return_output=False):
 
-    cwd = os.getcwd()
-    os.chdir(os.path.abspath('./include/'))
-    lib_code = subprocess.run(['make']).returncode
-    os.chdir(os.path.abspath(cwd))
-    if lib_code != 0:
-        return 'lib build failed'
+    # cwd = os.getcwd()
+    if not os.path.exists('./include'):
+        shutil.copytree(include_path, './include')
+    # os.chdir('./include')
+    # lib_code = subprocess.run(['make']).returncode
+    # os.chdir(os.path.abspath(cwd))
+    # shutil.copy('./include/libkeras2c.a', './')
+    # if lib_code != 0:
+    #     return 'lib build failed'
 
     if os.environ.get('CI'):
-        ccflags = '-g -Og -std=c99 --coverage -I./include/'
+        ccflags = '-g -Og -std=c99 --coverage ' # -I./include/'
     else:
-        ccflags = '-Ofast -std=c99 -I./include/'
+        ccflags = '-Ofast -std=c99 ' # -I./include/'
+    
+    inc_files = ' '.join([os.path.join('./include/', f) for f in os.listdir('./include/') if f.endswith('.c')])
 
+    # cc = CC + ' ' + ccflags + ' -o ' + name + ' ' + name + '.c ' + \
+    #     name + '_test_suite.c -L./include/ -l:libkeras2c.a -lm'
     cc = CC + ' ' + ccflags + ' -o ' + name + ' ' + name + '.c ' + \
-        name + '_test_suite.c -L./include/ -l:libkeras2c.a -lm'
+        name + '_test_suite.c ' + inc_files
+    print("Running command:")
+    print(cc)
     build_code = subprocess.run(cc.split()).returncode
     if build_code != 0:
         return 'build failed'

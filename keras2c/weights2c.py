@@ -500,7 +500,65 @@ class Weights2C():
         self._write_weights_array2c(kernel, layer.name + '_kernel')
         self._write_weights_array2c(bias, layer.name + '_bias')
         self.stack_vars += '\n \n'
+    
+    def _write_weights_Conv1DTranspose(self, layer):
+        padding = layer.get_config()['padding']
+        stride = layer.get_config()['strides'][0]
+        dilation = layer.get_config()['dilation_rate'][0]
+        kernel_size = layer.get_config()['kernel_size'][0]
+        
+        # Write dilation to C
+        self.stack_vars += 'size_t ' + layer.name + \
+            '_dilation = ' + str(dilation) + '; \n'
+        
+        # Initialize layer.name + '_output'
+        self._write_outputs(layer)
 
+        # Calculate zeros to insert
+        zeros_ins = stride - 1
+        # Initialize layer.name + '_zeros_inserted_input'
+        inshp = layer.get_input_at(0).shape[1:]
+        zeros_ins_inshp = (inshp[0] + (inshp[0]-1) * zeros_ins, inshp[1])
+        self._write_weights_array2c(np.zeros(zeros_ins_inshp),
+                                    layer.name + '_zeros_inserted_input')
+        # write zeros_ins to C
+        self.stack_vars += 'size_t ' + layer.name + '_zeros_ins = ' + str(zeros_ins) + '; \n'
+        
+        # Calculate padding
+        if padding == 'causal':
+            pad_along_height = 2 * (kernel_size - dilation*(kernel_size-1) - 1)
+            pad_top = pad_along_height
+            pad_bottom = 0
+        elif padding == 'same':
+            pad_along_height = 2 * (kernel_size - dilation*(kernel_size-1) - 1)
+            pad_top = int(pad_along_height // 2)
+            pad_bottom = int(pad_along_height - pad_top)
+        elif padding == 'valid':
+            pad_top = kernel_size - 1
+            pad_bottom = kernel_size - 1
+        
+        # Initialize layer.name + '_zeros_inserted_padded_input'
+        zeros_ins_pad_inshp = (zeros_ins_inshp[0] + pad_top + pad_bottom, zeros_ins_inshp[1])
+        self._write_weights_array2c(np.zeros(zeros_ins_pad_inshp),
+                                    layer.name + '_zeros_inserted_padded_input')
+        
+        # Write pad and fill to C
+        self.stack_vars += 'size_t ' + layer.name + '_pad[2] = {' + str(pad_top) + ','\
+            + str(pad_bottom) + '}; \n'
+        self.stack_vars += 'float ' + layer.name + '_fill = 0.0f; \n'
+
+        weights = layer.get_weights()
+        kernel = weights[0]
+        if layer.get_config()['use_bias']:
+            bias = weights[1]
+        else:
+            bias = np.zeros(kernel.shape[2])
+        
+        # Write kernel and bias to C
+        self._write_weights_array2c(np.transpose(kernel, (0, 2, 1)), layer.name + '_kernel')
+        self._write_weights_array2c(bias, layer.name + '_bias')
+        self.stack_vars += '\n \n'
+    
     def _write_weights_MaxPooling1D(self, layer):
         return self._write_weights_Pooling1D(layer)
 

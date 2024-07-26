@@ -197,6 +197,37 @@ class Layers2C():
 
     def _write_layer_Conv3D(self, layer, inputs, outputs, i):
         self._write_layer_Conv(layer, inputs, outputs, i)
+    
+    def _write_layer_ConvTranspose(self, layer, inputs, outputs, i):
+        nm, pnm, inputs, outputs = self._format_io_names(
+            layer, inputs, outputs)
+        activation = 'k2c_' + layer.get_config()['activation']
+
+        # Insert zeros into the input (stride - 1) number of zeros
+        self._write_layer_InsertZero(layer, inputs, pnm + '_zeros_inserted_input', i)
+        
+        # Pad the zero-inserted input by kernel_size-pad-1
+        self._write_layer_ZeroPad(layer, pnm + '_zeros_inserted_input', pnm +
+                                    '_zeros_inserted_padded_input', i)
+        # Set stride to 1 and do a convolution
+        if layer_type(layer)[-11:-9] == '1D':
+            fname = 'k2c_conv1d('
+        elif layer_type(layer)[-11:-9] == '2D':
+            fname = 'k2c_conv2d('
+        elif layer_type(layer)[-11:-9] == '3D':
+            fname = 'k2c_conv3d('
+        self.layers += fname + outputs + ',' + pnm + '_zeros_inserted_padded_input,' + \
+            pnm + '_kernel, \n\t' + pnm + '_bias, 1,' + nm + '_dilation,' + \
+                activation + '); \n' # stride is set to 1
+        
+    def _write_layer_Conv1DTranspose(self, layer, inputs, outputs, i):
+        self._write_layer_ConvTranspose(layer, inputs, outputs, i)
+
+    def _write_layer_Conv2DTranspose(self, layer, inputs, outputs, i):
+        self._write_layer_ConvTranspose(layer, inputs, outputs, i)
+
+    def _write_layer_Conv3DTranspose(self, layer, inputs, outputs, i):
+        self._write_layer_ConvTranspose(layer, inputs, outputs, i)
 
     def _write_layer_MaxPooling1D(self, layer, inputs, outputs, i):
         self._write_layer_Pooling(layer, inputs, outputs, i)
@@ -511,14 +542,26 @@ class Layers2C():
                 layer, inputs, outputs)
         else:
             nm = layer.name
-        if layer_type(layer)[-2:] == '1D':
+        
+        # For ConvTranspose layers, dim is in [-11:-9]
+        if layer_type(layer)[-2:] == '1D' or layer_type(layer)[-11:-9] == '1D':
             self.layers += 'k2c_pad1d('
-        elif layer_type(layer)[-2:] == '2D':
+        elif layer_type(layer)[-2:] == '2D' or layer_type(layer)[-11:-9] == '2D':
             self.layers += 'k2c_pad2d('
-        elif layer_type(layer)[-2:] == '3D':
+        elif layer_type(layer)[-2:] == '3D' or layer_type(layer)[-11:-9] == '3D':
             self.layers += 'k2c_pad3d('
         self.layers += outputs + ',' + inputs + ',' + nm + \
             '_fill, \n\t' + nm + '_pad); \n'
+    
+    def _write_layer_InsertZero(self, layer, inputs, outputs, i):
+        nm = layer.name
+        if layer_type(layer)[-11:-9] == '1D':
+            self.layers += 'k2c_insert_zeros1D('
+        elif layer_type(layer)[-11:-9] == '2D':
+            self.layers += 'k2c_insert_zeros2D('
+        elif layer_type(layer)[-11:-9] == '3D':
+            self.layers += 'k2c_insert_zeros3D('
+        self.layers += outputs + ',' + inputs + ', \n\t' + nm + '_zeros_ins); \n'
 
     def _write_layer_Dropout(self, layer, inputs, outputs, i):
         _, _, inputs, outputs, is_model_input, is_model_output = self._format_io_names(
