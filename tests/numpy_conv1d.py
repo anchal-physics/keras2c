@@ -11,6 +11,7 @@ https://github.com/rmwkwok/transposed_convolution_in_numpy/tree/main
 
 import numpy as np
 import tensorflow.keras as keras
+import traceback
 
 '''
 def out_shape(input_shape, kernel, strides=1, padding='valid', mode='normal')
@@ -99,8 +100,8 @@ Returns:
     numpy.ndarray: strided output tensor with batch size. (batch size, convolutions, filters) or unstrided input tensor with batch size. (batch size, height, channels)
 '''
 def stride1d(inputs, kernel, strides=1, padding='valid', mode='normal'):
-    if strides == 1:
-        return inputs
+    # if strides == 1:
+    #     return inputs
     ksize = kernel.shape[0]
     if mode == 'normal':
         if padding == 'valid':
@@ -154,12 +155,24 @@ def unroll_kernel1d(input_shape, kernel, strides=1, padding='valid', mode='norma
     elif mode == 'transposed':
         total_inp_size = nh + (nh - 1) * (strides - 1)
     if mode == 'normal':
+        if padding == 'valid':
+            start_ind = 0
+        elif padding == 'same':
+            # nconv_stride1 = ih + p_2 - ksize + 1 = total_inp_size - ksize + 1
+            # total_skip = (nconv_stride1 - 1) % strides
+            total_skip = (total_inp_size - ksize) % strides
+            if total_skip % 2 == 0:
+                start_ind = total_skip // 2
+            else:
+                start_ind = total_skip // 2 + (ksize % 2)
         unrolled_kernel = np.zeros((nc, nconv, nfilters, total_inp_size), dtype=np.float32)
         for ch in range(nc):
             for i in range(nconv):
+                # Go through only those convs which are not removed in stride1d later
+                i_s = start_ind + i * strides
                 for f in range(nfilters):
                     if mode == 'normal':
-                        unrolled_kernel[ch, i, f, i:i+ksize] += kernel[:, ch, f]
+                        unrolled_kernel[ch, i, f, i_s:i_s+ksize] += kernel[:, ch, f]
         return unrolled_kernel
     elif mode == 'transposed':
         unrolled_kernel = np.zeros((nc, total_inp_size + ksize - 1, nfilters, total_inp_size), dtype=np.float32)
@@ -185,9 +198,9 @@ Returns:
 '''
 def conv1d(inputs, kernel, strides=1, padding='valid'):
     n_batches, n_height, n_channels = inputs.shape
-    outputs = np.zeros((n_batches, *out_shape((n_height, n_channels), kernel, strides=1, padding=padding, mode='normal')))
-    padded_input = padding1d(inputs, kernel, padding=padding, mode='normal')
-    unrolled_kernel = unroll_kernel1d((n_height, n_channels), kernel, strides=1, padding=padding, mode='normal')
+    outputs = np.zeros((n_batches, *out_shape((n_height, n_channels), kernel, strides=strides, padding=padding, mode='normal')))
+    padded_input = padding1d(inputs, kernel, strides=strides, padding=padding, mode='normal')
+    unrolled_kernel = unroll_kernel1d((n_height, n_channels), kernel, strides=strides, padding=padding, mode='normal')
     _, n_convs, n_filters, n_padded_inp = unrolled_kernel.shape
     assert n_padded_inp == padded_input.shape[1]
     for batch in range(n_batches):
@@ -196,7 +209,9 @@ def conv1d(inputs, kernel, strides=1, padding='valid'):
             flat_inp[:, 0] = padded_input[batch, :, ch]
             for i in range(n_convs):
                 outputs[batch, i, :] += np.matmul(unrolled_kernel[ch, i, :, :], flat_inp).flatten()
-    return stride1d(outputs, kernel, strides=strides, padding=padding, mode='normal')
+    return outputs
+    # return stride1d(outputs, kernel, strides=strides, padding=padding, mode='normal')
+    # This output striding is needed when unrolled kernel is first calculated with strides=1
 
 '''
 def conv1d_transpose(inputs, kernel, strides=1, padding='valid')
@@ -255,18 +270,31 @@ if __name__ == '__main__':
         ker = mod.layers[1].get_weights()[0]
         inp = np.random.random((nb, nh, nc))
         out = mod.predict(inp)
-        calc_out_shape = out_shape((nh, nc), ker, padding=padding, strides=strides, mode=mode)
+        try:
+            calc_out_shape = out_shape((nh, nc), ker, padding=padding, strides=strides, mode=mode)
+        except BaseException:
+            print('-'*50)
+            print('Python Error in calculating output shape')
+            traceback.print_exc()
+            error = True
         
         error = False
         if calc_out_shape != out.shape[1:]:
             print('-'*50)
             print('Error in calculating output shape')
             error = True
-
-        if mode == 'normal':
-            out2 = conv1d(inp, ker, strides=strides, padding=padding)
-        elif mode == 'transposed':
-            out2 = conv1d_transpose(inp, ker, strides=strides, padding=padding)
+        
+        try:
+            if mode == 'normal':
+                out2 = conv1d(inp, ker, strides=strides, padding=padding)
+            elif mode == 'transposed':
+                out2 = conv1d_transpose(inp, ker, strides=strides, padding=padding)
+        except BaseException:
+            print('-'*50)
+            print('Python Error in calculating output')
+            traceback.print_exc()
+            error = True
+        
         if out.shape != out2.shape:
             print('-'*50)
             print('Error in returned output shape')
