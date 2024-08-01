@@ -12,6 +12,7 @@ https://github.com/rmwkwok/transposed_convolution_in_numpy/tree/main
 import numpy as np
 import tensorflow.keras as keras
 import traceback
+import time
 
 '''
 def out_shape(input_shape, kernel, strides=1, padding='valid', mode='normal')
@@ -154,6 +155,7 @@ def unroll_kernel1d(input_shape, kernel, strides=1, padding='valid', mode='norma
         total_inp_size = nh + p_2
     elif mode == 'transposed':
         total_inp_size = nh + (nh - 1) * (strides - 1)
+    unrolled_kernel = np.zeros((nc, nconv, nfilters, total_inp_size), dtype=np.float32)
     if mode == 'normal':
         if padding == 'valid':
             start_ind = 0
@@ -165,7 +167,6 @@ def unroll_kernel1d(input_shape, kernel, strides=1, padding='valid', mode='norma
                 start_ind = total_skip // 2
             else:
                 start_ind = total_skip // 2 + (ksize % 2)
-        unrolled_kernel = np.zeros((nc, nconv, nfilters, total_inp_size), dtype=np.float32)
         for ch in range(nc):
             for i in range(nconv):
                 # Go through only those convs which are not removed in stride1d later
@@ -175,11 +176,20 @@ def unroll_kernel1d(input_shape, kernel, strides=1, padding='valid', mode='norma
                         unrolled_kernel[ch, i, f, i_s:i_s+ksize] += kernel[:, ch, f]
         return unrolled_kernel
     elif mode == 'transposed':
-        unrolled_kernel = np.zeros((nc, total_inp_size + ksize - 1, nfilters, total_inp_size), dtype=np.float32)
+        # if cropping was done later, start_ind is the start point in cropping
+        if padding == 'valid':
+            start_ind = 0
+        elif padding == 'same':
+            out_crop = ksize - strides
+            start_ind = out_crop // 2
         for ch in range(nc):
             for f in range(nfilters):
                 for i in range(total_inp_size):
-                    unrolled_kernel[ch, i:i+ksize, f, i] += kernel[:, f, ch]
+                    cropped_start = max(0, i - start_ind)
+                    cropped_end = min(nconv, i + ksize - start_ind)
+                    ker_start = cropped_start - ( i - start_ind)
+                    ker_end = ker_start + cropped_end - cropped_start
+                    unrolled_kernel[ch, cropped_start:cropped_end, f, i] += kernel[ker_start:ker_end, f, ch]
     return unrolled_kernel
 
 '''
@@ -201,7 +211,7 @@ def conv1d(inputs, kernel, strides=1, padding='valid'):
     outputs = np.zeros((n_batches, *out_shape((n_height, n_channels), kernel, strides=strides, padding=padding, mode='normal')))
     padded_input = padding1d(inputs, kernel, strides=strides, padding=padding, mode='normal')
     unrolled_kernel = unroll_kernel1d((n_height, n_channels), kernel, strides=strides, padding=padding, mode='normal')
-    _, n_convs, n_filters, n_padded_inp = unrolled_kernel.shape
+    _, n_convs, _, n_padded_inp = unrolled_kernel.shape
     assert n_padded_inp == padded_input.shape[1]
     for batch in range(n_batches):
         for ch in range(n_channels):
@@ -229,10 +239,10 @@ Returns:
 '''
 def conv1d_transpose(inputs, kernel, strides=1, padding='valid'):
     n_batches, n_height, n_channels = inputs.shape
-    outputs = np.zeros((n_batches, *out_shape((n_height, n_channels), kernel, strides=strides, padding='valid', mode='transposed')))
-    strided_input = stride1d(inputs, kernel, strides=strides, padding='valid', mode='transposed')
-    unrolled_kernel = unroll_kernel1d((n_height, n_channels), kernel, strides=strides, padding='valid', mode='transposed')
-    _, n_convs, n_filters, n_strided_inp = unrolled_kernel.shape
+    outputs = np.zeros((n_batches, *out_shape((n_height, n_channels), kernel, strides=strides, padding=padding, mode='transposed')))
+    strided_input = stride1d(inputs, kernel, strides=strides, padding=padding, mode='transposed')
+    unrolled_kernel = unroll_kernel1d((n_height, n_channels), kernel, strides=strides, padding=padding, mode='transposed')
+    _, _, n_filters, n_strided_inp = unrolled_kernel.shape
     assert n_strided_inp == strided_input.shape[1]
     for batch in range(n_batches):
         for ch in range(n_channels):
@@ -240,7 +250,9 @@ def conv1d_transpose(inputs, kernel, strides=1, padding='valid'):
             flat_inp[:, 0] = strided_input[batch, :, ch]
             for f in range(n_filters):
                 outputs[batch, :, f] += np.matmul(unrolled_kernel[ch, :, f, :], flat_inp).flatten()
-    return padding1d(outputs, kernel, strides=strides, padding=padding, mode='transposed')
+    return outputs
+    # return padding1d(outputs, kernel, strides=strides, padding=padding, mode='transposed')
+    # This padding is needed when unrolled kernel is first calculated with padding='valid'
 
 
 if __name__ == '__main__':
@@ -285,10 +297,13 @@ if __name__ == '__main__':
             error = True
         
         try:
+            t_start = time.time()
             if mode == 'normal':
                 out2 = conv1d(inp, ker, strides=strides, padding=padding)
             elif mode == 'transposed':
                 out2 = conv1d_transpose(inp, ker, strides=strides, padding=padding)
+            t_end = time.time()
+            print('Numpy version time taken:                  {:.0f} ms'.format((t_end - t_start) * 1e3))
         except BaseException:
             print('-'*50)
             print('Python Error in calculating output')
