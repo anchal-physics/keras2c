@@ -259,6 +259,31 @@ def conv1d_transpose(inputs, kernel, strides=1, padding='valid'):
     # return padding1d(outputs, kernel, strides=strides, padding=padding, mode='transposed')
     # This padding is needed when unrolled kernel is first calculated with padding='valid'
 
+def conv1d_transpose_direct(inputs, kernel, strides=1, padding='valid'):
+    n_batches, n_height, n_channels = inputs.shape
+    ksize, n_filters, kc = kernel.shape
+    outputs = np.zeros((n_batches, *out_shape((n_height, n_channels), kernel, strides=strides, padding=padding, mode='transposed')))
+    _, n_conv, _ = outputs.shape
+    if padding == 'valid':
+        p_2 = 0
+    elif padding == 'same':
+        p_2 = ksize - strides
+    si = p_2 // 2
+    for b in range(n_batches):
+        for f in range(n_filters):
+            for ch in range(n_channels):
+                for t in range(n_height):
+                    if t - si > 0:
+                        cs = t - si
+                    else:
+                        cs = 0
+                    if t + ksize - si > n_conv:
+                        ce = n_conv
+                    else:
+                        ce = t + ksize - si
+                    for i in range(0, ce - cs):
+                        outputs[b, i + cs, f] += kernel[i, f, ch] * inputs[b, t, ch]
+    return outputs
 
 if __name__ == '__main__':
     for _ in range(100):
@@ -309,6 +334,12 @@ if __name__ == '__main__':
                 out2 = conv1d_transpose(inp, ker, strides=strides, padding=padding)
             t_end = time.time()
             print('Numpy version time taken:                  {:.0f} ms'.format((t_end - t_start) * 1e3))
+            if mode == 'transposed':
+                t_d_start = time.time()
+                out3 = conv1d_transpose_direct(inp, ker, strides=strides, padding=padding)
+                t_d_end = time.time()
+                print('Direct version time taken:                {:.0f} ms'.format((t_d_end - t_d_start) * 1e3))
+            
         except BaseException:
             print('-'*50)
             print('Python Error in calculating output')
@@ -336,6 +367,8 @@ if __name__ == '__main__':
             print('Calculated output shape:', calc_out_shape)
             print('Returned output shape:', out2.shape[1:])
             print('Output mismatch error:', np.abs(out - out2).max())
+            if mode == 'transposed':
+                print('Direct output mismatch error:', np.abs(out - out3).max())
             break
     if not error:
         print('All tests passed!')
