@@ -43,9 +43,14 @@ def out_shape(input_shape, kernel, strides=1, padding='valid', mode='normal'):
         ksize, nfilters, kc = kernel.shape
         assert ic == kc
         if padding == 'valid':
-            nconv = ih + ksize - 1 + ((ih - 1) * (strides - 1))
+            p_2 = 0
         elif padding == 'same':
-            nconv = ih + (ih * (strides - 1))
+            p_2 = ksize - strides
+        nconv = ih - p_2 + ksize - 1 + ((ih - 1) * (strides - 1))
+        # if padding == 'valid':
+        #     nconv = ih + ksize - 1 + ((ih - 1) * (strides - 1))
+        # elif padding == 'same':
+        #     nconv = ih + (ih * (strides - 1))
     return (nconv, nfilters)
 
 '''
