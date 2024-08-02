@@ -1,10 +1,7 @@
 name: keras2c
 channels:
-  - omfit
-  - aaronkho
   - conda-forge
   - defaults
-  - pytorch
 dependencies:
   - bzip2=1.0.8=h93a5062_5
   - ca-certificates=2024.6.2=hf0a4a13_0
@@ -63,4 +60,3 @@ dependencies:
       - urllib3==2.2.2
       - werkzeug==3.0.3
       - wrapt==1.14.1
-prefix: /Users/gupta/anaconda3/envs/keras2c
