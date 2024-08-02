@@ -259,6 +259,21 @@ def conv1d_transpose(inputs, kernel, strides=1, padding='valid'):
     # return padding1d(outputs, kernel, strides=strides, padding=padding, mode='transposed')
     # This padding is needed when unrolled kernel is first calculated with padding='valid'
 
+'''
+def conv1d_transpose_direct(inputs, kernel, strides=1, padding='valid')
+
+True flat array based direct implementation of transposed convolution operation. This
+function can be converted to C code directly.
+
+Args:
+    inputs (numpy.ndarray): input tensor with batch size. (batch size, height, channels)
+    kernel (numpy.ndarray): kernel of the transposed convolution operation. Returned by model.layer[i].get_weights()[0] for a keras model.
+    strides (int): strides of the transposed convolution operation
+    padding (str): padding of the transposed convolution operation. 'valid' or 'same' are supported.
+
+Returns:
+    numpy.ndarray: output tensor with batch size. (batch size, number of convolutions, number of filters)
+'''
 def conv1d_transpose_direct(inputs, kernel, strides=1, padding='valid'):
     n_batches, n_height, n_channels = inputs.shape
     ksize, n_filters, kc = kernel.shape
@@ -269,23 +284,33 @@ def conv1d_transpose_direct(inputs, kernel, strides=1, padding='valid'):
     elif padding == 'same':
         p_2 = ksize - strides
     si = p_2 // 2
+    output_flat = np.zeros((n_batches * n_conv * n_filters))
+    k_flat = kernel.flatten(order='C')
+    i_flat = inputs.flatten(order='C')
     for b in range(n_batches):
         for f in range(n_filters):
             for ch in range(n_channels):
                 for t in range(n_height):
-                    if t - si > 0:
-                        cs = t - si
+                    if t * strides > si:
+                        cs = t * strides - si
                     else:
                         cs = 0
-                    if t + ksize - si > n_conv:
+                    if t * strides + ksize - si > n_conv:
                         ce = n_conv
                     else:
-                        ce = t + ksize - si
-                    for i in range(0, ce - cs):
-                        outputs[b, i + cs, f] += kernel[i, f, ch] * inputs[b, t, ch]
-    return outputs
+                        ce = t * strides + ksize - si
+                    ks = cs - (t * strides - si)
+                    for i in range(0, ce-cs):
+                        output_flat[b * n_conv * n_filters + (cs + i) * n_filters + f] += k_flat[(i + ks) * n_filters * kc + f * kc + ch] * i_flat[b * n_height * n_channels + t * n_channels + ch]
+                        # outputs[b, i + cs, f] += kernel[i + ks, f, ch] * inputs[b, t, ch]
+    return output_flat.reshape((n_batches, n_conv, n_filters))
+    # return outputs
 
 if __name__ == '__main__':
+    mn = 0
+    mt = 0
+    pv = 0
+    ps = 0
     for _ in range(100):
         nb = np.random.randint(1, 10)
         nh = np.random.randint(2, 50)
@@ -295,13 +320,17 @@ if __name__ == '__main__':
         strides = np.random.randint(1, max(nk, 2))
         if np.random.randint(2):
             padding = 'valid'
+            pv += 1
         else:
             padding = 'same'
+            ps += 1
 
         if np.random.randint(2):
             mode = 'normal'
+            mn += 1
         else:
             mode = 'transposed'
+            mt += 1
 
         t_a = keras.layers.Input((nh, nc))
         if mode == 'normal':
@@ -354,6 +383,11 @@ if __name__ == '__main__':
             print('-'*50)
             print('Error in output values')
             error = True
+        elif mode == 'transposed':
+            if np.abs(out - out3).max() > 3e-6:
+                print('-'*50)
+                print('Error in direct output values')
+                error = True
         
         if error:
             print('Batch size:', nb)
@@ -368,7 +402,8 @@ if __name__ == '__main__':
             print('Returned output shape:', out2.shape[1:])
             print('Output mismatch error:', np.abs(out - out2).max())
             if mode == 'transposed':
-                print('Direct output mismatch error:', np.abs(out - out3).max())
+                print('Direct output mismatch error:', np.abs(out - out3).max(), np.abs(out2 - out3).max())
             break
     if not error:
+        print("Tested with {} normal, {} transposed, {} valid and {} same padding cases".format(mn, mt, pv, ps))
         print('All tests passed!')

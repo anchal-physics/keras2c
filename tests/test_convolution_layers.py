@@ -308,3 +308,6 @@ class TestUpSampling(unittest.TestCase):
         keras2c_main.k2c(model, name)
         rcode = build_and_run(name)
         self.assertEqual(rcode, 0)
+
+if __name__ == "__main__":
+    unittest.main()

@@ -63,6 +63,9 @@ void k2c_crop3d(k2c_tensor* output, const k2c_tensor* input, const size_t * crop
 void k2c_upsampling1d(k2c_tensor* output, const k2c_tensor* input, const size_t size);
 void k2c_upsampling2d(k2c_tensor* output, const k2c_tensor* input, const size_t * size);
 void k2c_upsampling3d(k2c_tensor* output, const k2c_tensor* input, const size_t * size);
+void k2c_conv1d_transpose(k2c_tensor *output, const k2c_tensor *input, const k2c_tensor *kernel,
+                          const k2c_tensor *bias, const size_t stride, const size_t start_crop,
+                          k2c_activationType *activation);
 
 // Core Layers
 void k2c_dense(k2c_tensor* output, const k2c_tensor* input, const k2c_tensor* kernel,

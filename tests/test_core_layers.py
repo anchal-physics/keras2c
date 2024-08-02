@@ -12,14 +12,19 @@ import subprocess
 import time
 import os
 import tensorflow as tf
+import shutil
 tf.compat.v1.disable_eager_execution()
 
-__author__ = "Rory Conlin"
-__copyright__ = "Copyright 2020, Rory Conlin"
-__license__ = "MIT"
-__maintainer__ = "Rory Conlin, https://github.com/f0uriest/keras2c"
-__email__ = "wconlin@princeton.edu"
+# Original author
+# __author__ = "Rory Conlin"
+# __copyright__ = "Copyright 2020, Rory Conlin"
+# __license__ = "MIT"
+# __maintainer__ = "Rory Conlin, https://github.com/f0uriest/keras2c"
+# __email__ = "wconlin@princeton.edu"
 
+# Modified by
+__author__ = "Anchal Gupta"
+__email__ = "guptaa@fusion.gat.com"
 
 CC = 'gcc'
 
@@ -48,8 +53,6 @@ def build_and_run(name, return_output=False):
     #     name + '_test_suite.c -L./include/ -l:libkeras2c.a -lm'
     cc = CC + ' ' + ccflags + ' -o ' + name + ' ' + name + '.c ' + \
         name + '_test_suite.c ' + inc_files
-    print("Running command:")
-    print(cc)
     build_code = subprocess.run(cc.split()).returncode
     if build_code != 0:
         return 'build failed'

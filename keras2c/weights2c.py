@@ -15,12 +15,16 @@ import tensorflow as tf
 tf.compat.v1.disable_eager_execution()
 maxndim = 5
 
+# Original author
+# __author__ = "Rory Conlin"
+# __copyright__ = "Copyright 2020, Rory Conlin"
+# __license__ = "MIT"
+# __maintainer__ = "Rory Conlin, https://github.com/f0uriest/keras2c"
+# __email__ = "wconlin@princeton.edu"
 
-__author__ = "Rory Conlin"
-__copyright__ = "Copyright 2020, Rory Conlin"
-__license__ = "MIT"
-__maintainer__ = "Rory Conlin, https://github.com/f0uriest/keras2c"
-__email__ = "wconlin@princeton.edu"
+# Modified by
+__author__ = "Anchal Gupta"
+__email__ = "guptaa@fusion.gat.com"
 
 
 class Weights2C():
@@ -497,6 +501,42 @@ class Weights2C():
             bias = weights[1]
         else:
             bias = np.zeros(kernel.shape[3])
+        self._write_weights_array2c(kernel, layer.name + '_kernel')
+        self._write_weights_array2c(bias, layer.name + '_bias')
+        self.stack_vars += '\n \n'
+    
+    def _write_weights_Conv1DTranspose(self, layer):
+        padding = layer.get_config()['padding']
+        stride = layer.get_config()['strides'][0]
+        dilation = layer.get_config()['dilation_rate'][0]
+        if dilation != 1:
+            raise ValueError('Dilation not supported for Conv1DTranspose')
+        kernel_size = layer.get_config()['kernel_size'][0]
+
+        # Write stride to C
+        self.stack_vars += 'size_t ' + layer.name + \
+            '_stride = ' + str(stride) + '; \n'
+        
+        if padding == 'valid':
+            start_crop = 0
+        elif padding == 'same':
+            start_crop = (kernel_size - stride) // 2
+        else:
+            raise ValueError('Only same and valid padding supported for Conv1DTranspose')
+        # Write start_crop to C
+        self.stack_vars += 'size_t ' + layer.name + \
+            '_start_crop = ' + str(start_crop) + '; \n'
+        
+        # Initialize layer.name + '_output'
+        self._write_outputs(layer)
+
+        # Write kernel and bias to C
+        weights = layer.get_weights()
+        kernel = weights[0]
+        if layer.get_config()['use_bias']:
+            bias = weights[1]
+        else:
+            bias = np.zeros(kernel.shape[1])
         self._write_weights_array2c(kernel, layer.name + '_kernel')
         self._write_weights_array2c(bias, layer.name + '_bias')
         self.stack_vars += '\n \n'
