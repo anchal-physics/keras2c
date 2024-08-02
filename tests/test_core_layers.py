@@ -33,8 +33,8 @@ include_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../incl
 def build_and_run(name, return_output=False):
 
     # cwd = os.getcwd()
-    if not os.path.exists('./include'):
-        shutil.copytree(include_path, './include')
+    # if not os.path.exists('./include'):
+    #     shutil.copytree(include_path, './include')
     # os.chdir('./include')
     # lib_code = subprocess.run(['make']).returncode
     # os.chdir(os.path.abspath(cwd))
@@ -47,7 +47,7 @@ def build_and_run(name, return_output=False):
     else:
         ccflags = '-Ofast -std=c99 ' # -I./include/'
     
-    inc_files = ' '.join([os.path.join('./include/', f) for f in os.listdir('./include/') if f.endswith('.c')])
+    inc_files = ' '.join([os.path.join(include_path, f) for f in os.listdir(include_path) if f.endswith('.c')])
 
     # cc = CC + ' ' + ccflags + ' -o ' + name + ' ' + name + '.c ' + \
     #     name + '_test_suite.c -L./include/ -l:libkeras2c.a -lm'
