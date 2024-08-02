@@ -1,0 +1,35 @@
+name: Test
+
+on:
+  push:
+    branches: master
+    paths:
+      - '.github/workflows/test.yml'
+      - 'keras2c/**'
+      - 'tests/**'
+      - 'include/**'
+  pull_request:
+    branches: master
+    paths:
+      - '.github/workflows/test.yml'
+      - 'keras2c/**'
+      - 'tests/**'
+      - 'include/**'
+
+jobs:
+    test:
+        runs-on: ubuntu-latest
+        steps:
+        - uses: actions/checkout@v2
+        - name: Setup GCC
+          uses: Dup4/actions-setup-gcc@v1
+          with:
+            version: latest
+        - uses: conda-incubator/setup-miniconda@v3
+          with:
+            activate-environment: keras2c
+            environment-file: conda_keras2c.yml
+        - run:
+            conda develop .
+            python -m pip install tests/requirements.txt
+            python -m pytest --cov=keras2c/
