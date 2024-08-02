@@ -3,11 +3,11 @@ name: Test
 on:
   push:
     branches: master
-    paths:
-      - '.github/workflows/test.yml'
-      - 'keras2c/**'
-      - 'tests/**'
-      - 'include/**'
+    # paths:
+    #   - '.github/workflows/test.yml'
+    #   - 'keras2c/**'
+    #   - 'tests/**'
+    #   - 'include/**'
   pull_request:
     branches: master
     paths:
