@@ -1,7 +1,7 @@
 """keras2c_main.py
 This file is part of keras2c
 Copyright 2020 Rory Conlin
-Licensed under MIT License
+Licensed under LGPLv3 License
 https://github.com/f0uriest/keras2c
 
 Converts keras model to C code
@@ -21,11 +21,16 @@ import tensorflow as tf
 tf.compat.v1.disable_eager_execution()
 
 
-__author__ = "Rory Conlin"
-__copyright__ = "Copyright 2020, Rory Conlin"
-__license__ = "MIT"
-__maintainer__ = "Rory Conlin, https://github.com/f0uriest/keras2c"
-__email__ = "wconlin@princeton.edu"
+# Original author
+# __author__ = "Rory Conlin"
+# __copyright__ = "Copyright 2020, Rory Conlin"
+# __license__ = "MIT"
+# __maintainer__ = "Rory Conlin, https://github.com/f0uriest/keras2c"
+# __email__ = "wconlin@princeton.edu"
+
+# Modified by
+__author__ = "Anchal Gupta"
+__email__ = "guptaa@fusion.gat.com"
 
 
 def model2c(model, function_name, malloc=False, verbose=True):

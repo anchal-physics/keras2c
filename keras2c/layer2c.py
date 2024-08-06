@@ -1,7 +1,7 @@
 """layer2c.py
 This file is part of keras2c
 Copyright 2020 Rory Conlin
-Licensed under MIT License
+Licensed under LGPLv3 License
 https://github.com/f0uriest/keras2c
 
 Writes individual layers to C code
@@ -69,7 +69,7 @@ class Layers2C():
         return self.layers
 
     def _format_io_names(self, layer, inp, outp, model_io=False):
-        nm = layer.name
+        nm = layer.name.replace('.', '_')
         pnm = '&' + nm
         is_model_input = False
         is_model_output = False
@@ -94,7 +94,7 @@ class Layers2C():
                     outp_nm.append(o + '_output')
                     is_model_output = True
                 else:
-                    outp_nm.append('&' + outp + '_output')
+                    outp_nm.append('&' + o + '_output')
         else:
             if outp in self.model_outputs or 'timeslice' in outp:
                 outp_nm = outp + '_output'
@@ -586,3 +586,18 @@ class Layers2C():
 
     def _write_layer_InputLayer(self, layer, inputs, outputs, i):
         self.layers += ''
+    
+    def _write_layer_TFOpLambda(self, layer, inputs, outputs, i):
+        self._write_layer_TensorFlowOpLayer(layer, inputs, outputs, i)
+
+    def _write_layer_TensorFlowOpLayer(self, layer, inputs, outputs, i):
+        if 'split' in layer.name:
+            _, _, inputs, outputs = self._format_io_names(
+                layer, inputs, outputs)
+            offset = 0
+            for j, outp in enumerate(outputs):
+                self.layers += 'k2c_split(' + outp + ',' + inputs + ',' + str(offset) + '); \n'
+                offset += layer.get_output_at(i)[j].shape[-1]
+        else:
+            raise AssertionError('Unsupported TensorFlowOpLayer: ' + layer.name + '\n'
+                                 + 'Currently only split operation is supported.')

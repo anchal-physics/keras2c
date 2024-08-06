@@ -1,7 +1,7 @@
 """weights2c.py
 This file is part of keras2c
 Copyright 2020 Rory Conlin
-Licensed under MIT License
+Licensed under LGPLv3 License
 https://github.com/f0uriest/keras2c
 
 Gets weights and other parameters from each layer and writes to C file
@@ -140,12 +140,20 @@ class Weights2C():
 
     def _write_outputs(self, layer):
         _, outputs = get_layer_io_names(layer)
-        if len(outputs) > 1:
+        print(outputs)
+        if isinstance(outputs, list):
             for i, outp in enumerate(outputs):
-                outshp = layer.get_output_at(i).shape[1:]
-                if outp not in self.model_io[1]:
-                    self._write_weights_array2c(
-                        np.zeros(outshp), outp + '_output')
+                if isinstance(outp, list):
+                    for j, outpp in enumerate(outp):
+                        outshp = layer.get_output_at(i)[j].shape[1:]
+                        if outpp not in self.model_io[1]:
+                            self._write_weights_array2c(
+                                np.zeros(outshp), outpp + '_output')
+                else:
+                    outshp = layer.get_output_at(i).shape[1:]
+                    if outp not in self.model_io[1]:
+                        self._write_weights_array2c(
+                            np.zeros(outshp), outp + '_output')
         else:
             outshp = layer.output_shape[1:]
             if outputs[0] not in self.model_io[1]:
@@ -888,3 +896,15 @@ class Weights2C():
     def _write_weights_Dropout(self, layer):
         # no weights needed
         pass
+
+    def _write_weights_TFOpLambda(self, layer):
+        self._write_weights_TensorFlowOpLayer(layer)
+
+    def _write_weights_TensorFlowOpLayer(self, layer):
+        # Special case when tf.split is used
+        # no weights needed
+        if 'split' in layer.name:
+            self._write_outputs(layer)
+        else:
+            raise AssertionError('Unsupported TensorFlowOpLayer: ' + layer.name + '\n'
+                                 + 'Currently only split operation is supported.')
