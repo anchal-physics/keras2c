@@ -3,7 +3,7 @@
 
 [![Test](https://github.com/anchal-physics/keras2c/actions/workflows/test.yml/badge.svg)](https://github.com/anchal-physics/keras2c/actions/workflows/test.yml)
 
-[![cov](https://anchal-physics.github.io/keras2c/badges/coverage.svg)](https://github.com/anchal-physics/keras2c/actions)
+![Codecov](https://img.shields.io/codecov/c/github/anchal.physics/keras2c)
 
 **Note**: This is a fork of the original [keras2c](https://github.com/PlasmaControl/keras2c) library. The licence
 remains the same as the original library. This fork adds additional features and installment instructions.
