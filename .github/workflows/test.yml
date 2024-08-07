@@ -33,15 +33,16 @@ jobs:
           uses: actions/setup-python@master
           with:
             python-version: 3.11.5
-        - name: Upload coverage reports to Codecov
-          uses: codecov/codecov-action@v4.0.1
-          with:
-            token: ${{ secrets.CODECOV_TOKEN }}
-        - run:
+        - name: Install dependencies and run tests
+          run:
             pip install -r requirements.txt
             pip install -r tests/requirements.txt
             coverage run -m pytest
             coverage json
+        - name: Upload coverage reports to Codecov
+          uses: codecov/codecov-action@v4.0.1
+          with:
+            token: ${{ secrets.CODECOV_TOKEN }}
         - name: Update Coverage Badge
           # GitHub actions: default branch variable
           # https://stackoverflow.com/questions/64781462/github-actions-default-branch-variable
