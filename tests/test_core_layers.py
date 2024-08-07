@@ -65,11 +65,10 @@ def build_and_run(name, return_output=False):
     proc_output = subprocess.run(['./' + name])
     rcode = proc_output.returncode
     if rcode == 0:
-        if not os.environ.get('CI'):
-            subprocess.run('rm ' + name + '*', shell=True)
-            if not in_repo_root:
-                shutil.rmtree('./include')
-            return (rcode, proc_output.stdout) if return_output else rcode
+        subprocess.run('rm ' + name + '*', shell=True)
+        if not in_repo_root:
+            shutil.rmtree('./include')
+        return (rcode, proc_output.stdout) if return_output else rcode
     return rcode
 
 
