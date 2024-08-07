@@ -32,27 +32,27 @@ include_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../incl
 
 def build_and_run(name, return_output=False):
 
-    # cwd = os.getcwd()
+    cwd = os.getcwd()
     # if not os.path.exists('./include'):
     #     shutil.copytree(include_path, './include')
-    # os.chdir('./include')
-    # lib_code = subprocess.run(['make']).returncode
-    # os.chdir(os.path.abspath(cwd))
+    os.chdir('./include')
+    lib_code = subprocess.run(['make']).returncode
+    os.chdir(os.path.abspath(cwd))
     # shutil.copy('./include/libkeras2c.a', './')
-    # if lib_code != 0:
-    #     return 'lib build failed'
+    if lib_code != 0:
+        return 'lib build failed'
 
     if os.environ.get('CI'):
         ccflags = '-g -Og -std=c99 --coverage ' # -I./include/'
     else:
         ccflags = '-Ofast -std=c99 ' # -I./include/'
     
-    inc_files = ' '.join([os.path.join(include_path, f) for f in os.listdir(include_path) if f.endswith('.c')])
+    # inc_files = ' '.join([os.path.join(include_path, f) for f in os.listdir(include_path) if f.endswith('.c')])
 
-    # cc = CC + ' ' + ccflags + ' -o ' + name + ' ' + name + '.c ' + \
-    #     name + '_test_suite.c -L./include/ -l:libkeras2c.a -lm'
     cc = CC + ' ' + ccflags + ' -o ' + name + ' ' + name + '.c ' + \
-        name + '_test_suite.c ' + inc_files
+        name + '_test_suite.c -L./include/ -l:libkeras2c.a -lm'
+    # cc = CC + ' ' + ccflags + ' -o ' + name + ' ' + name + '.c ' + \
+    #     name + '_test_suite.c ' + inc_files
     build_code = subprocess.run(cc.split()).returncode
     if build_code != 0:
         return 'build failed'
