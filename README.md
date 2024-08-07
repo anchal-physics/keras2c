@@ -8,10 +8,21 @@
 **Note**: This is a fork of the original [keras2c](https://github.com/PlasmaControl/keras2c) library. The licence
 remains the same as the original library. This fork adds additional features and installment instructions.
 
-Install conda environment:
+Install conda environment (for MacOS):
 ```bash
 conda env create -f conda_keras2c.yml
+conda develop /path/to/this/repo
 ```
+
+Installation for linux:
+```bash
+cd /path/to/this/repo
+conda create -n keras2c python=3.11.5
+conda activate keras2c
+python -m pip install -r requirements
+conda develop .
+```
+Then you can run keras2c code from anywhere on your machine after activating conda environment `keras2c`.
 
 **********
 
