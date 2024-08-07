@@ -13,6 +13,7 @@ import time
 import os
 import tensorflow as tf
 import shutil
+import platform
 tf.compat.v1.disable_eager_execution()
 
 # Original author
@@ -26,33 +27,38 @@ tf.compat.v1.disable_eager_execution()
 __author__ = "Anchal Gupta"
 __email__ = "guptaa@fusion.gat.com"
 
-CC = 'gcc'
-
-include_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../include/')
-
 def build_and_run(name, return_output=False):
 
-    cwd = os.getcwd()
-    # if not os.path.exists('./include'):
-    #     shutil.copytree(include_path, './include')
-    os.chdir('./include')
-    lib_code = subprocess.run(['make']).returncode
-    os.chdir(os.path.abspath(cwd))
-    # shutil.copy('./include/libkeras2c.a', './')
-    if lib_code != 0:
-        return 'lib build failed'
+    CC = 'gcc'
+
+    repo_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../'))
+    include_path = os.path.join(repo_path, './include/')
 
     if os.environ.get('CI'):
-        ccflags = '-g -Og -std=c99 --coverage ' # -I./include/'
+        ccflags = '-g -Og -std=c99 --coverage '
     else:
-        ccflags = '-Ofast -std=c99 ' # -I./include/'
+        ccflags = '-Ofast -std=c99 '
     
-    # inc_files = ' '.join([os.path.join(include_path, f) for f in os.listdir(include_path) if f.endswith('.c')])
-
-    cc = CC + ' ' + ccflags + ' -o ' + name + ' ' + name + '.c ' + \
+    cwd = os.getcwd()
+    in_repo_root = cwd == repo_path
+    if not in_repo_root:
+        shutil.copytree(include_path, './include')
+        include_path = os.path.abspath('./include/')
+    
+    if platform.system() == 'Linux':
+        cwd = os.getcwd()
+        os.chdir('./include')
+        lib_code = subprocess.run(['make']).returncode
+        os.chdir(os.path.abspath(cwd))
+        if lib_code != 0:
+            return 'lib build failed'
+        
+        cc = CC + ' ' + ccflags + ' -o ' + name + ' ' + name + '.c ' + \
         name + '_test_suite.c -L./include/ -l:libkeras2c.a -lm'
-    # cc = CC + ' ' + ccflags + ' -o ' + name + ' ' + name + '.c ' + \
-    #     name + '_test_suite.c ' + inc_files
+    elif platform.system() == 'Darwin':
+        inc_files = ' '.join([os.path.join(include_path, f) for f in os.listdir(include_path) if f.endswith('.c')])
+        cc = CC + ' ' + ccflags + ' -o ' + name + ' ' + name + '.c ' + \
+            name + '_test_suite.c ' + inc_files
     build_code = subprocess.run(cc.split()).returncode
     if build_code != 0:
         return 'build failed'
@@ -61,6 +67,8 @@ def build_and_run(name, return_output=False):
     if rcode == 0:
         if not os.environ.get('CI'):
             subprocess.run('rm ' + name + '*', shell=True)
+            if not in_repo_root:
+                shutil.rmtree('./include')
             return (rcode, proc_output.stdout) if return_output else rcode
     return rcode
 
