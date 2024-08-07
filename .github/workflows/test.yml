@@ -39,7 +39,7 @@ jobs:
             pip install -r requirements.txt
             pip install -r tests/requirements.txt
             coverage run -m pytest
-            coverage json
+            coverage json -o coverage/coverage-summary.json
         - name: Upload coverage reports to Codecov
           uses: codecov/codecov-action@v4.0.1
           with:
