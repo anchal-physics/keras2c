@@ -25,16 +25,21 @@ jobs:
           uses: Dup4/actions-setup-gcc@v1
           with:
             version: latest
-        - uses: conda-incubator/setup-miniconda@v3
+        # - uses: conda-incubator/setup-miniconda@v3
+        #   with:
+        #     activate-environment: keras2c_test
+        #     environment-file: conda_keras2c_test.yml
+        - name: Setup Python
+          uses: actions/setup-python@master
           with:
-            activate-environment: keras2c_test
-            environment-file: conda_keras2c_test.yml
+            python-version: 3.11.5
         - name: Upload coverage reports to Codecov
           uses: codecov/codecov-action@v4.0.1
           with:
             token: ${{ secrets.CODECOV_TOKEN }}
         - run:
-            conda develop .
+            pip install -r requirements.txt
+            pip install -r tests/requirements.txt
             coverage run -m pytest
             coverage json
         - name: Update Coverage Badge
